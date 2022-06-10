@@ -98,16 +98,16 @@ module GraphQL
           operation_name: query.operation_name
         }
 
-        redis.multi do
-          redis.sadd(CHANNEL_PREFIX + channel.params["channelId"], subscription_id)
-          redis.mapped_hmset(SUBSCRIPTION_PREFIX + subscription_id, data)
-          redis.sadd(SUBSCRIPTION_EVENTS_PREFIX + subscription_id, events.map(&:topic))
+        redis.multi do |pipeline|
+          pipeline.sadd(CHANNEL_PREFIX + channel.params["channelId"], subscription_id)
+          pipeline.mapped_hmset(SUBSCRIPTION_PREFIX + subscription_id, data)
+          pipeline.sadd(SUBSCRIPTION_EVENTS_PREFIX + subscription_id, events.map(&:topic))
           events.each do |event|
-            redis.sadd(EVENT_PREFIX + event.topic, subscription_id)
+            pipeline.sadd(EVENT_PREFIX + event.topic, subscription_id)
           end
           next unless config.subscription_expiration_seconds
-          redis.expire(CHANNEL_PREFIX + channel.params["channelId"], config.subscription_expiration_seconds)
-          redis.expire(SUBSCRIPTION_PREFIX + subscription_id, config.subscription_expiration_seconds)
+          pipeline.expire(CHANNEL_PREFIX + channel.params["channelId"], config.subscription_expiration_seconds)
+          pipeline.expire(SUBSCRIPTION_PREFIX + subscription_id, config.subscription_expiration_seconds)
         end
       end
 
